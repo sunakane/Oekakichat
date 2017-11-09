@@ -48,8 +48,8 @@
 //
 //  グローバル変数
 //
-LPCTSTR lpClassName = "SimpleTextChat";        // ウィンドウクラス名
-LPCTSTR lpWindowName = "SimpleTextChat";        // タイトルバーにつく名前
+LPCTSTR lpClassName = "OekakiChat";        // ウィンドウクラス名
+LPCTSTR lpWindowName = "OekakiChat";        // タイトルバーにつく名前
 
 SOCKET sock = INVALID_SOCKET;            // ソケット
 SOCKET sv_sock = INVALID_SOCKET;            // サーバ用ソケット
@@ -74,6 +74,7 @@ POINT pos_p[MAX_POS];
 LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);   // ウィンドウ関数
 BOOL SockInit(HWND hWnd);                               // ソケット初期化
 BOOL SockAccept(HWND hWnd);                             // ソケット接続待ち
+void triggerWindow(BOOL hostbox, BOOL connectbtn, BOOL acceptbtn, BOOL rejectbtn, BOOL rejectreqbtn, BOOL sendbtn, BOOL sndmsgbtn, BOOL recvmsgbtn);
 BOOL SockConnect(HWND hWnd, LPCSTR host);               // ソケット接続
 
 LRESULT CALLBACK OnPaint(HWND, UINT, WPARAM, LPARAM);
@@ -84,10 +85,10 @@ BOOL checkMousePos(int x, int y);
 void WindowInit(HWND hWnd);                             // ウィンドウ初期化
 
 
-														////////////////////////////////////////////////////////////////////////////////
-														//
-														//  WinMain関数 (Windowsプログラム起動時に呼ばれる関数)
-														//
+////////////////////////////////////////////////////////////////////////////////
+//
+//  WinMain関数 (Windowsプログラム起動時に呼ばれる関数)
+//
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow)
 {
 	HWND hWnd;                                          // ウィンドウハンドル
@@ -599,6 +600,7 @@ LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 	return 0L;
 }
 
+//自分が描いた部分の座標を保存
 void setData(int f, int x, int y)
 {
 	flag[n] = f;
@@ -606,6 +608,7 @@ void setData(int f, int x, int y)
 	pos[n].y = y;
 }
 
+//相手が描いた部分の座標を保存
 void setData_p(int f, int x, int y)
 {
 	flag_p[np] = f;
@@ -613,6 +616,7 @@ void setData_p(int f, int x, int y)
 	pos_p[np].y = y;
 }
 
+//キャンバス内にマウスが入っているかどうかのチェック
 BOOL checkMousePos(int x, int y)
 {
 	if (x >= d.left && x <= d.right
