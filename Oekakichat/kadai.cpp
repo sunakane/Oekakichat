@@ -12,8 +12,6 @@
 #include <Windows.h>
 #include <WinSock.h>
 #include <stdio.h>
-#include <string>
-#include <vector>
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -61,42 +59,13 @@ HPEN hPenBlack;
 HPEN hPenRed;
 
 const RECT d = { 10, 300, 355, 550 };
-int n = 0;									//カウンタ
-int np = 0;
-std::vector<int> flag;
-//int flag[MAX_POS];
-//std::vector<int> flag_p;
+int n;									//カウンタ
+int np;
+int flag[MAX_POS];
 int flag_p[MAX_POS];
 POINT pos[MAX_POS];						//キャンバス上の点
 POINT pos_p[MAX_POS];
 
-class Data {
-private:
-	std::vector<int> flag_test;
-	std::vector<POINT> pos_test;
-
-public:
-	void setData_test(int f, int x, int y);
-	
-	int getflag_test(int i) {
-		return flag_test[i];
-	}
-
-	POINT getpos_test(int i) {
-		return pos_test[i];
-	}
-};
-
-void Data::setData_test(int f, int x, int y){
-	POINT pos_temp;
-	pos_temp.x = x;
-	pos_temp.y = y;
-	flag_test.push_back(f);
-	pos_test.push_back(pos_temp);
-}
-
-
-Data data_test;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -105,6 +74,7 @@ Data data_test;
 LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);   // ウィンドウ関数
 BOOL SockInit(HWND hWnd);                               // ソケット初期化
 BOOL SockAccept(HWND hWnd);                             // ソケット接続待ち
+void triggerWindow(BOOL hostbox, BOOL connectbtn, BOOL acceptbtn, BOOL rejectbtn, BOOL rejectreqbtn, BOOL sendbtn, BOOL sndmsgbtn, BOOL recvmsgbtn);
 BOOL SockConnect(HWND hWnd, LPCSTR host);               // ソケット接続
 
 LRESULT CALLBACK OnPaint(HWND, UINT, WPARAM, LPARAM);
@@ -243,7 +213,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 	case WM_LBUTTONDOWN:
 
 		if (checkMousePos(LOWORD(lP), HIWORD(lP))) {
-			data_test.setData_test(0, LOWORD(lP), HIWORD(lP));
+			setData(0, LOWORD(lP), HIWORD(lP));
 
 			sprintf(buf_draw, "%1d%03d%03d\0", flag[n], pos[n].x, pos[n].y);
 			send(sock, buf_draw, strlen(buf_draw) + 1, 0);
@@ -608,11 +578,11 @@ LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 	//自分を描いた分を描画
 	SelectObject(hdc, hPenBlack);
 	for (int i = 0; i < n; i++) {
-		if (data_test.getflag_test(i) == 0) {
-			MoveToEx(hdc, data_test.getpos_test(i).x, data_test.getpos_test(i).y, NULL);
+		if (flag[i] == 0) {
+			MoveToEx(hdc, pos[i].x, pos[i].y, NULL);
 		}
 		else {
-			LineTo(hdc, data_test.getpos_test(i).x, data_test.getpos_test(i).y);
+			LineTo(hdc, pos[i].x, pos[i].y);
 		}
 	}
 
@@ -635,7 +605,7 @@ LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 //自分が描いた部分の座標を保存
 void setData(int f, int x, int y)
 {
-	flag.push_back(f);
+	flag[n] = f;
 	pos[n].x = x;
 	pos[n].y = y;
 }
