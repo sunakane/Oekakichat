@@ -45,6 +45,46 @@
 #define MAX_POS			10000		// 座標の最大数
 
 ////////////////////////////////////////////////////////////////////////////////
+//点のデータを保存するクラス
+//
+class Data {
+private:
+	int flag[MAX_POS];		//線の始点かどうかのフラグ
+	POINT pos[MAX_POS];		//キャンバス上の点の座標
+	int n;					//点の個数
+
+public:
+	//データをセットするメソッド
+	void setData(int f, int x, int y) {
+		flag[n] = f;
+		pos[n].x = x;
+		pos[n].y = y;
+	}
+
+	//フラグを取得するメソッド
+	int getFlag(int i) {
+		return flag[i];
+	}
+
+	//点の座標を取得するメソッド
+	POINT getPos(int i) {
+		return pos[i];
+	}
+
+	//点の個数を取得するメソッド
+	int getNumberOfPoint() {
+		return n;
+	}
+
+	//点の個数を増やすメソッド
+	void inclimentNum();
+};
+
+void Data::inclimentNum() {
+	n++;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 //
 //  グローバル変数
 //
@@ -58,14 +98,10 @@ HOSTENT *phe;                       // HOSTENT構造体
 HPEN hPenBlack;
 HPEN hPenRed;
 
-const RECT d = { 10, 300, 355, 550 };
-int n;									//カウンタ
-int np;
-int flag[MAX_POS];
-int flag_p[MAX_POS];
-POINT pos[MAX_POS];						//キャンバス上の点
-POINT pos_p[MAX_POS];
+const RECT d = { 10, 300, 355, 550 };	//キャンバスの範囲
 
+Data myData;		//自分が描いた点
+Data recvData;		//相手が描いた点
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -74,12 +110,11 @@ POINT pos_p[MAX_POS];
 LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);   // ウィンドウ関数
 BOOL SockInit(HWND hWnd);                               // ソケット初期化
 BOOL SockAccept(HWND hWnd);                             // ソケット接続待ち
-void triggerWindow(BOOL hostbox, BOOL connectbtn, BOOL acceptbtn, BOOL rejectbtn, BOOL rejectreqbtn, BOOL sendbtn, BOOL sndmsgbtn, BOOL recvmsgbtn);
 BOOL SockConnect(HWND hWnd, LPCSTR host);               // ソケット接続
 
 LRESULT CALLBACK OnPaint(HWND, UINT, WPARAM, LPARAM);
-void setData(int flag, int x, int y);
-void setData_p(int flag, int x, int y);
+//void setData(int flag, int x, int y);
+//void setData_p(int flag, int x, int y);
 BOOL checkMousePos(int x, int y);
 
 void WindowInit(HWND hWnd);                             // ウィンドウ初期化
@@ -213,12 +248,13 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 	case WM_LBUTTONDOWN:
 
 		if (checkMousePos(LOWORD(lP), HIWORD(lP))) {
-			setData(0, LOWORD(lP), HIWORD(lP));
+			myData.setData(0, LOWORD(lP), HIWORD(lP));
 
-			sprintf(buf_draw, "%1d%03d%03d\0", flag[n], pos[n].x, pos[n].y);
+			int num = myData.getNumberOfPoint();
+			sprintf(buf_draw, "%1d%03d%03d\0", myData.getFlag(num), myData.getPos(num).x, myData.getPos(num).y);
 			send(sock, buf_draw, strlen(buf_draw) + 1, 0);
 
-			n++;
+			myData.inclimentNum();
 			InvalidateRect(hWnd, &d, FALSE);
 			mouseFlg = TRUE;
 		}
@@ -232,17 +268,18 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 		if (wP == MK_LBUTTON) {
 			if (checkMousePos(LOWORD(lP), HIWORD(lP))) {
 				if (mouseFlg) {
-					setData(1, LOWORD(lP), HIWORD(lP));
+					myData.setData(1, LOWORD(lP), HIWORD(lP));
 				}
 				else {
-					setData(0, LOWORD(lP), HIWORD(lP));
+					myData.setData(0, LOWORD(lP), HIWORD(lP));
 				}
 				mouseFlg = TRUE;
 
-				sprintf(buf_draw, "%1d%03d%03d\n", flag[n], pos[n].x, pos[n].y);
+				int num = myData.getNumberOfPoint();
+				sprintf(buf_draw, "%1d%03d%03d\n", myData.getFlag(num), myData.getPos(num).x, myData.getPos(num).y);
 				send(sock, buf_draw, strlen(buf_draw) + 1, 0);
 
-				n++;
+				myData.inclimentNum();
 				InvalidateRect(hWnd, &d, FALSE);
 			}
 			else {
@@ -448,8 +485,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 
 				xstr[3] = '\0';	ystr[3] = '\0';
 
-				setData_p(atoi(fstr), atoi(xstr), atoi(ystr));
-				np++;
+				recvData.setData(atoi(fstr), atoi(xstr), atoi(ystr));
+				recvData.inclimentNum();
 				InvalidateRect(hWnd, &d, FALSE);
 			}
 			return 0L;
@@ -577,45 +614,29 @@ LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 
 	//自分を描いた分を描画
 	SelectObject(hdc, hPenBlack);
-	for (int i = 0; i < n; i++) {
-		if (flag[i] == 0) {
-			MoveToEx(hdc, pos[i].x, pos[i].y, NULL);
+	for (int i = 0; i < myData.getNumberOfPoint(); i++) {
+		if (myData.getFlag(i) == 0) {
+			MoveToEx(hdc, myData.getPos(i).x, myData.getPos(i).y, NULL);
 		}
 		else {
-			LineTo(hdc, pos[i].x, pos[i].y);
+			LineTo(hdc, myData.getPos(i).x, myData.getPos(i).y);
 		}
 	}
 
 	//相手が描いた分を描画
 	SelectObject(hdc, hPenRed);
-	for (int i = 0; i < np; i++) {
-		if (flag_p[i] == 0) {
-			MoveToEx(hdc, pos_p[i].x, pos_p[i].y, NULL);
+	for (int i = 0; i < recvData.getNumberOfPoint(); i++) {
+		if (recvData.getFlag(i) == 0) {
+			MoveToEx(hdc, recvData.getPos(i).x, recvData.getPos(i).y, NULL);
 		}
 		else {
-			LineTo(hdc, pos_p[i].x, pos_p[i].y);
+			LineTo(hdc, recvData.getPos(i).x, recvData.getPos(i).y);
 		}
 	}
 
 	EndPaint(hWnd, &ps);
 
 	return 0L;
-}
-
-//自分が描いた部分の座標を保存
-void setData(int f, int x, int y)
-{
-	flag[n] = f;
-	pos[n].x = x;
-	pos[n].y = y;
-}
-
-//相手が描いた部分の座標を保存
-void setData_p(int f, int x, int y)
-{
-	flag_p[np] = f;
-	pos_p[np].x = x;
-	pos_p[np].y = y;
 }
 
 //キャンバス内にマウスが入っているかどうかのチェック
