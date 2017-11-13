@@ -556,8 +556,6 @@ BOOL SockConnect(HWND hWnd, LPCSTR host)
 	return FALSE;
 }
 
-
-//çƒï`âÊä÷êî
 LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 {
 	HDC hdc;
