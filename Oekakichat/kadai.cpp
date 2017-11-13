@@ -239,7 +239,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 		SetFocus(hWndHost);     //フォーカス指定
 		SockInit(hWnd);         // ソケット初期化
 
-								//ペン生成
+		//ペン生成
 		hPenBlack = (HPEN)CreatePen(PS_SOLID, 3, RGB(0, 0, 0));
 		hPenRed = (HPEN)CreatePen(PS_SOLID, 3, RGB(255, 0, 0));
 
@@ -357,7 +357,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 				MessageBox(hWnd, TEXT("request failed"), TEXT("Error"),
 					MB_OK | MB_ICONEXCLAMATION);
 			}
-
 
 			return 0L;
 		} /* end of switch (LOWORD(wP)) */
