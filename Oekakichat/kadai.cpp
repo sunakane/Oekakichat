@@ -187,7 +187,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 	static HWND hWndConnect, hWndAccept;                // [接続]ボタンと[接続待ち]ボタン
 	static HWND hWndReject;                     // [切断]ボタン
 	static HWND hWndRejectRequest;				// [切断要請]ボタン
-	static HWND hWndSend;                       // [送信]ボタン
 	static HWND hWndSendMSG;                    // 送信メッセージ入力用エディットボックス
 	static HWND hWndRecvMSG;                    // 受信メッセージ表示用エディットボックス
 
