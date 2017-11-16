@@ -12,6 +12,7 @@
 #include <Windows.h>
 #include <WinSock.h>
 #include <cstdio>
+#include <vector>
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -48,14 +49,17 @@
 //
 class Data {
 private:
-	int flag[MAX_POS];		//線の始点かどうかのフラグ
+	//int flag[MAX_POS];		//線の始点かどうかのフラグ
+	std::vector<int> flag;
+	std::vector<int>::iterator fitr;
 	POINT pos[MAX_POS];		//キャンバス上の点の座標
 	int n = 0;				//点の個数
 
 public:
 	//setter
 	void setData(int f, int x, int y) {
-		flag[n] = f;
+		//flag[n] = f;
+		flag.insert(flag.begin()+n, f);
 		pos[n].x = x;
 		pos[n].y = y;
 	}
