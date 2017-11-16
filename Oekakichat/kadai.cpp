@@ -12,7 +12,8 @@
 #include <Windows.h>
 #include <WinSock.h>
 #include <cstdio>
-#include <vector>
+#include <list>
+#include <cassert>
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -42,61 +43,13 @@
 #define WINDOW_H        1000         // ウィンドウの高さ
 
 #define MAX_MESSAGE     128         // テキストメッセージの配列の最大要素数
-//#define MAX_POS			10000		// 座標の最大数
+#define MAX_POS			100000		// 座標の最大数
 
-////////////////////////////////////////////////////////////////////////////////
-//点のデータを保存するクラス
-//
-class Data {
-private:
-	//線の始点かどうかのフラグ
-	std::vector<int> flag;
-
-	//キャンバス上の点の座標
-	std::vector<POINT> pos;
-	int n = 0;				//点の個数
-
-public:
-	//データをセットする
-	void setData(int f, int x, int y) {
-		//flag[n] = f;
-		flag.insert(flag.begin() + n, f);
-		//pos[n].x = x;
-		//pos[n].y = y;
-		pos.insert(pos.begin() + n, { x,y });
-	}
-
-	//フラグを取得する
-	int getFlag(int i) {
-		return flag[i];
-	}
-
-	//点の座標を取得する
-	POINT getPos(int i) {
-		return pos[i];
-	}
-
-	//点の個数を取得する
-	int getNumberOfPoint() {
-		return n;
-	}
-
-	//点の個数を増やす
-	void inclimentNum();
-
-	void initData();
-};
-
-void Data::inclimentNum() {
-	n++;
-}
-
-void Data::initData() {
-	n = 0;
-
-	flag.clear();
-	pos.clear();
-}
+typedef struct Data
+{
+	int flag;
+	POINT pos;
+} Data_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -112,10 +65,10 @@ HOSTENT *phe;                       // HOSTENT構造体
 HPEN hPenBlack;
 HPEN hPenRed;
 
-const RECT d = { 10, 100, WINDOW_W-30, 350 };	//キャンバスの範囲
+const RECT d = { 10, 100, 370, 350 };	//キャンバスの範囲
 
-Data myData;		//自分が描いた点
-Data recvData;		//相手が描いた点
+std::list<Data_t> myData;		//自分が描いた点
+std::list<Data_t> recvData;		//相手が描いた点
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -176,8 +129,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLin
 	ShowWindow(hWnd, nCmdShow);                         // ウィンドウ表示モード
 	UpdateWindow(hWnd);                                 // ウインドウ更新
 
-	myData.initData();
-	recvData.initData();
+	
 														// メッセージループ
 	while (GetMessage(&msg, NULL, 0, 0)) {                // メッセージを取得
 		TranslateMessage(&msg);
@@ -252,18 +204,21 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 		hPenBlack = (HPEN)CreatePen(PS_SOLID, 3, RGB(0, 0, 0));
 		hPenRed = (HPEN)CreatePen(PS_SOLID, 3, RGB(255, 0, 0));
 
+		myData.clear();
+		recvData.clear();
+
 		return 0L;
 
 	case WM_LBUTTONDOWN:
 
 		if (checkMousePos(LOWORD(lP), HIWORD(lP))) {
-			myData.setData(0, LOWORD(lP), HIWORD(lP));
+			myData.push_back({ 0, LOWORD(lP), HIWORD(lP) });
 
-			int num = myData.getNumberOfPoint();
-			sprintf(buf_draw, "%1d%03d%03d\0", myData.getFlag(num), myData.getPos(num).x, myData.getPos(num).y);
+			auto itr = --myData.end();
+			sprintf(buf_draw, "%1d%03d%03d\0", (*itr).flag, (*itr).pos.x, (*itr).pos.y);
 			send(sock, buf_draw, strlen(buf_draw) + 1, 0);
 
-			myData.inclimentNum();
+			//itr = myData.end();
 			InvalidateRect(hWnd, &d, FALSE);
 			mouseFlg = TRUE;
 		}
@@ -277,18 +232,18 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 		if (wP == MK_LBUTTON) {
 			if (checkMousePos(LOWORD(lP), HIWORD(lP))) {
 				if (mouseFlg) {
-					myData.setData(1, LOWORD(lP), HIWORD(lP));
+					myData.push_back({ 1, LOWORD(lP), HIWORD(lP) });
 				}
 				else {
-					myData.setData(0, LOWORD(lP), HIWORD(lP));
+					myData.push_back({ 0, LOWORD(lP), HIWORD(lP) });
 				}
 				mouseFlg = TRUE;
 
-				int num = myData.getNumberOfPoint();
-				sprintf(buf_draw, "%1d%03d%03d\n", myData.getFlag(num), myData.getPos(num).x, myData.getPos(num).y);
+				auto itr = --myData.end();
+				sprintf(buf_draw, "%1d%03d%03d\0", (*itr).flag, (*itr).pos.x, (*itr).pos.y);
 				send(sock, buf_draw, strlen(buf_draw) + 1, 0);
 
-				myData.inclimentNum();
+				//itr=myData.end();
 				InvalidateRect(hWnd, &d, FALSE);
 			}
 			else {
@@ -345,6 +300,11 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 			EnableWindow(hWndRejectRequest, FALSE);	//[切断要請] 無効
 			EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
 			SetFocus(hWndHost);         // フォーカス指定
+			
+			recvData.clear();
+
+			InvalidateRect(hWnd, &d, FALSE);
+			
 			return 0L;
 
 		case IDB_REJECT_REQUEST:
@@ -407,6 +367,12 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 			}
 			EnableWindow(hWndSendMSG, TRUE);    // 送信文入力可
 			SetFocus(hWndSendMSG);          // フォーカス指定
+
+			myData.clear();
+			recvData.clear();
+
+			InvalidateRect(hWnd, &d, FALSE);
+
 			return 0L;
 		}/* end of case FD_ACCEPT: */
 
@@ -428,10 +394,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 			}
 			EnableWindow(hWndSendMSG, TRUE);    // 送信文入力可
 			SetFocus(hWndSendMSG);          // フォーカス指定
-
-			//キャンバスを初期化
-			myData.initData();
-			recvData.initData();
 
 			InvalidateRect(hWnd, &d, FALSE);
 
@@ -464,6 +426,12 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 					EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
 					SetFocus(hWndHost);         // フォーカス指定
 
+					//キャンバスを初期化
+					myData.clear();
+					recvData.clear();
+
+					InvalidateRect(hWnd, &d, FALSE);
+
 					return 0L;
 				}
 
@@ -485,8 +453,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 
 				xstr[3] = '\0';	ystr[3] = '\0';
 
-				recvData.setData(atoi(fstr), atoi(xstr), atoi(ystr));
-				recvData.inclimentNum();
+				recvData.push_back({ atoi(fstr), atoi(xstr), atoi(ystr) });
+				//recvData.inclimentNum();
 				InvalidateRect(hWnd, &d, FALSE);
 			}
 			return 0L;
@@ -614,23 +582,23 @@ LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 
 	//自分を描いた分を描画
 	SelectObject(hdc, hPenBlack);
-	for (int i = 0; i < myData.getNumberOfPoint(); i++) {
-		if (myData.getFlag(i) == 0) {
-			MoveToEx(hdc, myData.getPos(i).x, myData.getPos(i).y, NULL);
+	for (auto itr = myData.begin(); itr != myData.end(); ++itr) {
+		if ((*itr).flag == 0) {
+			MoveToEx(hdc, (*itr).pos.x, (*itr).pos.y, NULL);
 		}
 		else {
-			LineTo(hdc, myData.getPos(i).x, myData.getPos(i).y);
+			LineTo(hdc, (*itr).pos.x, (*itr).pos.y);
 		}
 	}
 
 	//相手が描いた分を描画
 	SelectObject(hdc, hPenRed);
-	for (int i = 0; i < recvData.getNumberOfPoint(); i++) {
-		if (recvData.getFlag(i) == 0) {
-			MoveToEx(hdc, recvData.getPos(i).x, recvData.getPos(i).y, NULL);
+	for (auto itr = recvData.begin(); itr != recvData.end(); ++itr) {
+		if ((*itr).flag == 0) {
+			MoveToEx(hdc, (*itr).pos.x, (*itr).pos.y, NULL);
 		}
 		else {
-			LineTo(hdc, recvData.getPos(i).x, recvData.getPos(i).y);
+			LineTo(hdc, (*itr).pos.x, (*itr).pos.y);
 		}
 	}
 
