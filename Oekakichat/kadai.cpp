@@ -11,7 +11,7 @@
 //
 #include <Windows.h>
 #include <WinSock.h>
-#include <stdio.h>
+#include <cstdio>
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -29,8 +29,7 @@
 #define IDB_CONNECT     1000            // [接続]ボタン
 #define IDB_ACCEPT      1001            // [接続待ち]ボタン
 #define IDB_REJECT      1002            // [切断]ボタン
-#define IDB_SEND        1003            // [送信]ボタン
-#define IDB_REJECT_REQUEST 1004			// [切断要請]ボタン
+#define IDB_REJECT_REQUEST 1003			// [切断要請]ボタン
 
 #define IDF_HOSTNAME    2000                // ホスト名入力エディットボックス
 #define IDF_SENDMSG     2001            // 送信メッセージ入力用エディットボックス
@@ -51,10 +50,10 @@ class Data {
 private:
 	int flag[MAX_POS];		//線の始点かどうかのフラグ
 	POINT pos[MAX_POS];		//キャンバス上の点の座標
-	int n;					//点の個数
+	int n = 0;				//点の個数
 
 public:
-	//データをセットするメソッド
+	//setter
 	void setData(int f, int x, int y) {
 		flag[n] = f;
 		pos[n].x = x;
@@ -78,10 +77,16 @@ public:
 
 	//点の個数を増やすメソッド
 	void inclimentNum();
+
+	void initData();
 };
 
 void Data::inclimentNum() {
 	n++;
+}
+
+void Data::initData() {
+	n = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,7 +103,7 @@ HOSTENT *phe;                       // HOSTENT構造体
 HPEN hPenBlack;
 HPEN hPenRed;
 
-const RECT d = { 10, 300, 355, 550 };	//キャンバスの範囲
+const RECT d = { 10, 100, WINDOW_W-30, 350 };	//キャンバスの範囲
 
 Data myData;		//自分が描いた点
 Data recvData;		//相手が描いた点
@@ -117,7 +122,7 @@ LRESULT CALLBACK OnPaint(HWND, UINT, WPARAM, LPARAM);
 //void setData_p(int flag, int x, int y);
 BOOL checkMousePos(int x, int y);
 
-void WindowInit(HWND hWnd);                             // ウィンドウ初期化
+//void WindowInit(HWND hWnd);                             // ウィンドウ初期化
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +135,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLin
 	MSG  msg;                                           // メッセージ
 	WNDCLASSEX wc;                                      // ウィンドウクラス
 
-														//ウィンドウクラス定義
+    //ウィンドウクラス定義
 	wc.hInstance = hInstance;                       // インスタンス
 	wc.lpszClassName = lpClassName;                     // クラス名
 	wc.lpfnWndProc = WindowProc;                      // ウィンドウ関数名
@@ -212,17 +217,13 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 		hWndAccept = CreateWindow("button", "接続待ち",
 			WS_CHILD | WS_VISIBLE, 275, 30, 90, 25,
 			hWnd, (HMENU)IDB_ACCEPT, NULL, NULL);
-		// [送信]ボタン
-		hWndSend = CreateWindow("button", "送信",
-			WS_CHILD | WS_VISIBLE | WS_DISABLED, 275, 730, 90, 25,
-			hWnd, (HMENU)IDB_SEND, NULL, NULL);
 		// [切断要請]ボタン
 		hWndRejectRequest = CreateWindow("button", "切断要請",
-			WS_CHILD | WS_VISIBLE | WS_DISABLED, 10, 930, 90, 25,
+			WS_CHILD | WS_VISIBLE | WS_DISABLED, 220, 60, 90, 25,
 			hWnd, (HMENU)IDB_REJECT_REQUEST, NULL, NULL);
 		// [切断]ボタン
 		hWndReject = CreateWindow("button", "切断",
-			WS_CHILD | WS_VISIBLE | WS_DISABLED, 275, 930, 90, 25,
+			WS_CHILD | WS_VISIBLE | WS_DISABLED, 315, 60, 50, 25,
 			hWnd, (HMENU)IDB_REJECT, NULL, NULL);
 		SetFocus(hWndHost);
 
@@ -334,20 +335,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 			EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 			EnableWindow(hWndReject, FALSE);    // [切断]    無効
 			EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
-			EnableWindow(hWndSend, FALSE);      // [送信]    無効
 			SetFocus(hWndHost);         // フォーカス指定
-			return 0L;
-
-		case IDB_SEND:      // [送信]ボタン押下
-			char buf[MAX_MESSAGE];                  // 送信内容を一時的に格納するバッファ
-			GetWindowText(hWndSendMSG, buf, sizeof(buf) - 1);     // 送信メッセージ入力欄の内容を取得
-			if (send(sock, buf, strlen(buf) + 1, 0) == SOCKET_ERROR) {    // 送信処理
-																		  // 送信に失敗したらエラーを表示
-				MessageBox(hWnd, TEXT("sending failed"), TEXT("Error"),
-					MB_OK | MB_ICONEXCLAMATION);
-			}
-			SetWindowText(hWndSendMSG, TEXT(""));    // 送信メッセージ入力用エディットボックスを空にする
-			SetFocus(hWndSendMSG);          // フォーカス指定
 			return 0L;
 
 		case IDB_REJECT_REQUEST:
@@ -382,7 +370,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 				EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 				EnableWindow(hWndReject, FALSE);    // [切断]    無効
 				EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
-				EnableWindow(hWndSend, FALSE);      // [送信]    無効
 				SetFocus(hWndHost);         // フォーカス指定
 				return 0L;
 			}
@@ -404,12 +391,10 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 				EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 				EnableWindow(hWndReject, FALSE);    // [切断]    無効
 				EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
-				EnableWindow(hWndSend, FALSE);      // [送信]    無効
 				SetFocus(hWndHost);         // フォーカス指定
 				return 0L;
 			}
 			EnableWindow(hWndSendMSG, TRUE);    // 送信文入力可
-			EnableWindow(hWndSend, TRUE);       // [送信]有効
 			SetFocus(hWndSendMSG);          // フォーカス指定
 			return 0L;
 		}/* end of case FD_ACCEPT: */
@@ -426,13 +411,16 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 				EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 				EnableWindow(hWndReject, FALSE);    // [切断]    無効
 				EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
-				EnableWindow(hWndSend, FALSE);      // [送信]    無効
 				SetFocus(hWndHost);         // フォーカス指定
 				return 0L;
 			}
 			EnableWindow(hWndSendMSG, TRUE);    // 送信文入力可
-			EnableWindow(hWndSend, TRUE);       // [送信]有効
 			SetFocus(hWndSendMSG);          // フォーカス指定
+
+			myData.initData();
+			recvData.initData();
+
+			InvalidateRect(hWnd, &d, FALSE);
 
 			return 0L;
 
@@ -460,7 +448,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 					EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 					EnableWindow(hWndReject, FALSE);    // [切断]    無効
 					EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
-					EnableWindow(hWndSend, FALSE);      // [送信]    無効
 					SetFocus(hWndHost);         // フォーカス指定
 
 					return 0L;
@@ -608,8 +595,8 @@ LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 	LineTo(hdc, d.left, d.bottom);
 	LineTo(hdc, d.left, d.top);
 
-	SelectObject(hdc, GetStockObject(WHITE_BRUSH));
-	Rectangle(hdc, d.left, d.top, d.right, d.bottom);
+	//SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+	//Rectangle(hdc, d.left, d.top, d.right, d.bottom);
 
 	//自分を描いた分を描画
 	SelectObject(hdc, hPenBlack);
