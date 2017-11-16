@@ -42,44 +42,46 @@
 #define WINDOW_H        1000         // ウィンドウの高さ
 
 #define MAX_MESSAGE     128         // テキストメッセージの配列の最大要素数
-#define MAX_POS			10000		// 座標の最大数
+//#define MAX_POS			10000		// 座標の最大数
 
 ////////////////////////////////////////////////////////////////////////////////
 //点のデータを保存するクラス
 //
 class Data {
 private:
-	//int flag[MAX_POS];		//線の始点かどうかのフラグ
+	//線の始点かどうかのフラグ
 	std::vector<int> flag;
-	std::vector<int>::iterator fitr;
-	POINT pos[MAX_POS];		//キャンバス上の点の座標
+
+	//キャンバス上の点の座標
+	std::vector<POINT> pos;
 	int n = 0;				//点の個数
 
 public:
-	//setter
+	//データをセットする
 	void setData(int f, int x, int y) {
 		//flag[n] = f;
-		flag.insert(flag.begin()+n, f);
-		pos[n].x = x;
-		pos[n].y = y;
+		flag.insert(flag.begin() + n, f);
+		//pos[n].x = x;
+		//pos[n].y = y;
+		pos.insert(pos.begin() + n, { x,y });
 	}
 
-	//フラグを取得するメソッド
+	//フラグを取得する
 	int getFlag(int i) {
 		return flag[i];
 	}
 
-	//点の座標を取得するメソッド
+	//点の座標を取得する
 	POINT getPos(int i) {
 		return pos[i];
 	}
 
-	//点の個数を取得するメソッド
+	//点の個数を取得する
 	int getNumberOfPoint() {
 		return n;
 	}
 
-	//点の個数を増やすメソッド
+	//点の個数を増やす
 	void inclimentNum();
 
 	void initData();
@@ -91,6 +93,9 @@ void Data::inclimentNum() {
 
 void Data::initData() {
 	n = 0;
+
+	flag.clear();
+	pos.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,8 +127,6 @@ BOOL SockAccept(HWND hWnd);                             // ソケット接続待ち
 BOOL SockConnect(HWND hWnd, LPCSTR host);               // ソケット接続
 
 LRESULT CALLBACK OnPaint(HWND, UINT, WPARAM, LPARAM);
-//void setData(int flag, int x, int y);
-//void setData_p(int flag, int x, int y);
 BOOL checkMousePos(int x, int y);
 
 //void WindowInit(HWND hWnd);                             // ウィンドウ初期化
@@ -173,6 +176,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLin
 	ShowWindow(hWnd, nCmdShow);                         // ウィンドウ表示モード
 	UpdateWindow(hWnd);                                 // ウインドウ更新
 
+	myData.initData();
+	recvData.initData();
 														// メッセージループ
 	while (GetMessage(&msg, NULL, 0, 0)) {                // メッセージを取得
 		TranslateMessage(&msg);
@@ -337,6 +342,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 			EnableWindow(hWndConnect, TRUE);    // [接続]    有効
 			EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 			EnableWindow(hWndReject, FALSE);    // [切断]    無効
+			EnableWindow(hWndRejectRequest, FALSE);	//[切断要請] 無効
 			EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
 			SetFocus(hWndHost);         // フォーカス指定
 			return 0L;
@@ -372,6 +378,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 				EnableWindow(hWndConnect, TRUE);    // [接続]    有効
 				EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 				EnableWindow(hWndReject, FALSE);    // [切断]    無効
+				EnableWindow(hWndRejectRequest, FALSE);	//[切断要請] 無効
 				EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
 				SetFocus(hWndHost);         // フォーカス指定
 				return 0L;
@@ -393,6 +400,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 				EnableWindow(hWndConnect, TRUE);    // [接続]    有効
 				EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 				EnableWindow(hWndReject, FALSE);    // [切断]    無効
+				EnableWindow(hWndRejectRequest, FALSE);	//[切断要請] 無効
 				EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
 				SetFocus(hWndHost);         // フォーカス指定
 				return 0L;
@@ -413,6 +421,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 				EnableWindow(hWndConnect, TRUE);    // [接続]    有効
 				EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 				EnableWindow(hWndReject, FALSE);    // [切断]    無効
+				EnableWindow(hWndRejectRequest, FALSE);	//[切断要請] 無効
 				EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
 				SetFocus(hWndHost);         // フォーカス指定
 				return 0L;
@@ -420,6 +429,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 			EnableWindow(hWndSendMSG, TRUE);    // 送信文入力可
 			SetFocus(hWndSendMSG);          // フォーカス指定
 
+			//キャンバスを初期化
 			myData.initData();
 			recvData.initData();
 
@@ -450,6 +460,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 					EnableWindow(hWndConnect, TRUE);    // [接続]    有効
 					EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 					EnableWindow(hWndReject, FALSE);    // [切断]    無効
+					EnableWindow(hWndRejectRequest, FALSE);	//[切断要請] 無効
 					EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
 					SetFocus(hWndHost);         // フォーカス指定
 
