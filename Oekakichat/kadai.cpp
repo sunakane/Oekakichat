@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  kadai.cpp
-//	todo: おえかき部分の背景色の設定をどうするか
-//			おえかき部分を起動時などに無効化する方法
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -34,21 +33,22 @@
 #define IDB_REJECT_REQUEST 1003			// [切断要請]ボタン
 
 #define IDF_HOSTNAME    2000                // ホスト名入力エディットボックス
-#define IDF_RECVMSG     2002            // 受信メッセージ表示用エディットボックス
 
 #define IDE_RECVMSG     3000            // メッセージ受信イベント
 
 #define WINDOW_W        400         // ウィンドウの幅
-#define WINDOW_H        1000         // ウィンドウの高さ
+#define WINDOW_H        400         // ウィンドウの高さ
 
 #define MAX_MESSAGE     128         // テキストメッセージの配列の最大要素数
 #define MAX_POS			100000		// 座標の最大数
 
-typedef struct Data
+
+//Data_t型の定義
+typedef struct Data_t
 {
 	int flag;
 	POINT pos;
-} Data_t;
+} Data;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -67,7 +67,7 @@ HPEN hPenRed;
 const RECT d = { 10, 100, 370, 350 };	//キャンバスの範囲
 
 std::list<Data_t> myData;		//自分が描いた点
-std::list<Data_t> recvData;		//相手が描いた点
+std::list<Data_t> rcvData;		//相手が描いた点
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -128,8 +128,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLin
 	ShowWindow(hWnd, nCmdShow);                         // ウィンドウ表示モード
 	UpdateWindow(hWnd);                                 // ウインドウ更新
 
-	
-														// メッセージループ
+	// メッセージループ
 	while (GetMessage(&msg, NULL, 0, 0)) {                // メッセージを取得
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);                          // メッセージ送る
@@ -151,7 +150,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 
 	static BOOL mouseFlg = FALSE;
 
-	char buf_draw[MAX_MESSAGE];
+	char buf[MAX_MESSAGE];
 
 	switch (uMsg) {
 	case WM_CREATE:     // ウィンドウが生成された
@@ -159,8 +158,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 		CreateWindow("static", "Host Name",
 			WS_CHILD | WS_VISIBLE, 10, 10, 100, 18,
 			hWnd, NULL, NULL, NULL);
-		CreateWindow(TEXT("static"), TEXT("Receive Message"), WS_CHILD | WS_VISIBLE,
-			10, 780, 200, 18, hWnd, NULL, NULL, NULL);
 
 		// ホスト名入力用エディットボックス
 		hWndHost = CreateWindowEx(WS_EX_CLIENTEDGE, "edit", "",
@@ -184,11 +181,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 			hWnd, (HMENU)IDB_REJECT, NULL, NULL);
 		SetFocus(hWndHost);
 
-		//受信メッセージ表示用エディットボックス
-		hWndRecvMSG = CreateWindowEx(WS_EX_CLIENTEDGE, TEXT("edit"), TEXT(""),
-			WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY, 10, 800, 355, 100,
-			hWnd, (HMENU)IDF_RECVMSG, NULL, NULL);
-
 		SetFocus(hWndHost);     //フォーカス指定
 		SockInit(hWnd);         // ソケット初期化
 
@@ -197,7 +189,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 		hPenRed = (HPEN)CreatePen(PS_SOLID, 3, RGB(255, 0, 0));
 
 		myData.clear();
-		recvData.clear();
+		rcvData.clear();
 
 		return 0L;
 
@@ -207,8 +199,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 			myData.push_back({ 0, LOWORD(lP), HIWORD(lP) });
 
 			auto itr = --myData.end();
-			sprintf(buf_draw, "%1d%03d%03d\0", (*itr).flag, (*itr).pos.x, (*itr).pos.y);
-			send(sock, buf_draw, (int)strlen(buf_draw) + 1, 0);
+			sprintf(buf, "%1d%03d%03d\0", (*itr).flag, (*itr).pos.x, (*itr).pos.y);
+			send(sock, buf, (int)strlen(buf) + 1, 0);
 
 			InvalidateRect(hWnd, &d, FALSE);
 			mouseFlg = TRUE;
@@ -231,8 +223,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 				mouseFlg = TRUE;
 
 				auto itr = --myData.end();
-				sprintf(buf_draw, "%1d%03d%03d\0", (*itr).flag, (*itr).pos.x, (*itr).pos.y);
-				send(sock, buf_draw, (int)strlen(buf_draw) + 1, 0);
+				sprintf(buf, "%1d%03d%03d\0", (*itr).flag, (*itr).pos.x, (*itr).pos.y);
+				send(sock, buf, (int)strlen(buf) + 1, 0);
 
 				InvalidateRect(hWnd, &d, FALSE);
 			}
@@ -352,7 +344,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 			}
 
 			myData.clear();
-			recvData.clear();
+			rcvData.clear();
 
 			InvalidateRect(hWnd, &d, FALSE);
 
@@ -382,7 +374,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 		case FD_READ:       //メッセージ受信
 			char buf[MAX_MESSAGE];                  // 受信内容を一時的に格納するバッファ
 			if (recv(sock, buf, sizeof(buf) - 1, 0) != SOCKET_ERROR) { // 受信できたなら
-				SetWindowText(hWndRecvMSG, buf);        // 受信メッセージ表示用エディットボックスに受信内容を貼り付け
 
 				if (!strncmp(buf, "REJECT", strlen(buf))) {
 					MessageBox(hWnd, "切断が予告されました。\nOKを押すと切断します。", "切断予告", MB_OK | MB_ICONEXCLAMATION);
@@ -429,7 +420,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 
 				xstr[3] = '\0';	ystr[3] = '\0';
 
-				recvData.push_back({ atoi(fstr), atoi(xstr), atoi(ystr) });
+				rcvData.push_back({ atoi(fstr), atoi(xstr), atoi(ystr) });
 				InvalidateRect(hWnd, &d, FALSE);
 			}
 			return 0L;
@@ -484,8 +475,6 @@ BOOL SockInit(HWND hWnd)
 	return FALSE;
 }
 
-
-
 //再描画関数
 LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 {
@@ -506,7 +495,7 @@ LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 
 
 	//描画データが空もしくは未接続ならば返す
-	if ((myData.empty() && recvData.empty()) || (sock == INVALID_SOCKET && sv_sock == INVALID_SOCKET)) {
+	if ((myData.empty() && rcvData.empty()) || (sock == INVALID_SOCKET && sv_sock == INVALID_SOCKET)) {
 
 		EndPaint(hWnd, &ps);
 		return 0L;
@@ -524,7 +513,7 @@ LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 
 	//相手が描いた分を描画
 	SelectObject(hdc, hPenRed);
-	for (auto itr = recvData.begin(); itr != recvData.end(); ++itr) {
+	for (auto itr = rcvData.begin(); itr != rcvData.end(); ++itr) {
 		if ((*itr).flag == 0) {
 			MoveToEx(hdc, (*itr).pos.x, (*itr).pos.y, NULL);
 		}
@@ -551,7 +540,7 @@ BOOL checkMousePos(int x, int y)
 void CambusInit(HWND hWnd, const RECT * rect, BOOL bErase)
 {
 	myData.clear();
-	recvData.clear();
+	rcvData.clear();
 
 	InvalidateRect(hWnd, rect, bErase);
 }
