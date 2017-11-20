@@ -34,7 +34,6 @@
 #define IDB_REJECT_REQUEST 1003			// [切断要請]ボタン
 
 #define IDF_HOSTNAME    2000                // ホスト名入力エディットボックス
-#define IDF_SENDMSG     2001            // 送信メッセージ入力用エディットボックス
 #define IDF_RECVMSG     2002            // 受信メッセージ表示用エディットボックス
 
 #define IDE_RECVMSG     3000            // メッセージ受信イベント
@@ -83,7 +82,7 @@ LRESULT CALLBACK OnPaint(HWND, UINT, WPARAM, LPARAM);
 BOOL checkMousePos(int x, int y);
 
 //void WindowInit(HWND hWnd);                             // ウィンドウ初期化
-
+void CambusInit(HWND hWnd, const RECT* rect, BOOL bErase);
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -148,20 +147,18 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 	static HWND hWndConnect, hWndAccept;                // [接続]ボタンと[接続待ち]ボタン
 	static HWND hWndReject;                     // [切断]ボタン
 	static HWND hWndRejectRequest;				// [切断要請]ボタン
-	static HWND hWndSendMSG;                    // 送信メッセージ入力用エディットボックス
 	static HWND hWndRecvMSG;                    // 受信メッセージ表示用エディットボックス
 
 	static BOOL mouseFlg = FALSE;
 
 	char buf_draw[MAX_MESSAGE];
+
 	switch (uMsg) {
 	case WM_CREATE:     // ウィンドウが生成された
 						// 文字列表示
 		CreateWindow("static", "Host Name",
 			WS_CHILD | WS_VISIBLE, 10, 10, 100, 18,
 			hWnd, NULL, NULL, NULL);
-		CreateWindow(TEXT("static"), TEXT("Send Message"), WS_CHILD | WS_VISIBLE,
-			10, 590, 200, 18, hWnd, NULL, NULL, NULL);
 		CreateWindow(TEXT("static"), TEXT("Receive Message"), WS_CHILD | WS_VISIBLE,
 			10, 780, 200, 18, hWnd, NULL, NULL, NULL);
 
@@ -187,11 +184,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 			hWnd, (HMENU)IDB_REJECT, NULL, NULL);
 		SetFocus(hWndHost);
 
-
-		//送信メッセージ入力用エディットボックス
-		hWndSendMSG = CreateWindowEx(WS_EX_CLIENTEDGE, TEXT("edit"), TEXT(""),
-			WS_CHILD | WS_VISIBLE | ES_MULTILINE | WS_DISABLED, 10, 610, 355, 100,
-			hWnd, (HMENU)IDF_SENDMSG, NULL, NULL);
 		//受信メッセージ表示用エディットボックス
 		hWndRecvMSG = CreateWindowEx(WS_EX_CLIENTEDGE, TEXT("edit"), TEXT(""),
 			WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY, 10, 800, 355, 100,
@@ -216,9 +208,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 
 			auto itr = --myData.end();
 			sprintf(buf_draw, "%1d%03d%03d\0", (*itr).flag, (*itr).pos.x, (*itr).pos.y);
-			send(sock, buf_draw, strlen(buf_draw) + 1, 0);
+			send(sock, buf_draw, (int)strlen(buf_draw) + 1, 0);
 
-			//itr = myData.end();
 			InvalidateRect(hWnd, &d, FALSE);
 			mouseFlg = TRUE;
 		}
@@ -241,9 +232,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 
 				auto itr = --myData.end();
 				sprintf(buf_draw, "%1d%03d%03d\0", (*itr).flag, (*itr).pos.x, (*itr).pos.y);
-				send(sock, buf_draw, strlen(buf_draw) + 1, 0);
+				send(sock, buf_draw, (int)strlen(buf_draw) + 1, 0);
 
-				//itr=myData.end();
 				InvalidateRect(hWnd, &d, FALSE);
 			}
 			else {
@@ -298,12 +288,9 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 			EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 			EnableWindow(hWndReject, FALSE);    // [切断]    無効
 			EnableWindow(hWndRejectRequest, FALSE);	//[切断要請] 無効
-			EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
 			SetFocus(hWndHost);         // フォーカス指定
-			
-			recvData.clear();
 
-			InvalidateRect(hWnd, &d, FALSE);
+			CambusInit(hWnd, &d, TRUE);
 			
 			return 0L;
 
@@ -339,7 +326,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 				EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 				EnableWindow(hWndReject, FALSE);    // [切断]    無効
 				EnableWindow(hWndRejectRequest, FALSE);	//[切断要請] 無効
-				EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
 				SetFocus(hWndHost);         // フォーカス指定
 				return 0L;
 			}
@@ -361,12 +347,9 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 				EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 				EnableWindow(hWndReject, FALSE);    // [切断]    無効
 				EnableWindow(hWndRejectRequest, FALSE);	//[切断要請] 無効
-				EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
 				SetFocus(hWndHost);         // フォーカス指定
 				return 0L;
 			}
-			EnableWindow(hWndSendMSG, TRUE);    // 送信文入力可
-			SetFocus(hWndSendMSG);          // フォーカス指定
 
 			myData.clear();
 			recvData.clear();
@@ -388,12 +371,9 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 				EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 				EnableWindow(hWndReject, FALSE);    // [切断]    無効
 				EnableWindow(hWndRejectRequest, FALSE);	//[切断要請] 無効
-				EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
 				SetFocus(hWndHost);         // フォーカス指定
 				return 0L;
 			}
-			EnableWindow(hWndSendMSG, TRUE);    // 送信文入力可
-			SetFocus(hWndSendMSG);          // フォーカス指定
 
 			InvalidateRect(hWnd, &d, FALSE);
 
@@ -423,14 +403,10 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 					EnableWindow(hWndAccept, TRUE);     // [接続待ち]有効
 					EnableWindow(hWndReject, FALSE);    // [切断]    無効
 					EnableWindow(hWndRejectRequest, FALSE);	//[切断要請] 無効
-					EnableWindow(hWndSendMSG, FALSE);   // 送信文入力不可
 					SetFocus(hWndHost);         // フォーカス指定
 
 					//キャンバスを初期化
-					myData.clear();
-					recvData.clear();
-
-					InvalidateRect(hWnd, &d, FALSE);
+					CambusInit(hWnd, &d, TRUE);
 
 					return 0L;
 				}
@@ -454,7 +430,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 				xstr[3] = '\0';	ystr[3] = '\0';
 
 				recvData.push_back({ atoi(fstr), atoi(xstr), atoi(ystr) });
-				//recvData.inclimentNum();
 				InvalidateRect(hWnd, &d, FALSE);
 			}
 			return 0L;
@@ -467,10 +442,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 		}/* end of switch (WSAGETSELECTEVENT(lP)) */
 		return 0L;
 
-	case WM_SETFOCUS:   // ウィンドウにフォーカスが来たら
-						// ホスト名入力欄が入力可ならフォーカス
-						// 不可なら送信メッセージ入力欄にフォーカス
-		SetFocus(IsWindowEnabled(hWndHost) ? hWndHost : hWndSendMSG);
+	case WM_SETFOCUS:
 		return 0L;
 
 	case WM_PAINT:		//再描画
@@ -510,6 +482,78 @@ BOOL SockInit(HWND hWnd)
 		exit(-1);
 	}
 	return FALSE;
+}
+
+
+
+//再描画関数
+LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
+{
+	HDC hdc;
+	PAINTSTRUCT ps;
+
+	hdc = BeginPaint(hWnd, &ps);
+
+	//描画領域初期化
+	MoveToEx(hdc, d.left, d.top, NULL);
+	LineTo(hdc, d.right, d.top);
+	LineTo(hdc, d.right, d.bottom);
+	LineTo(hdc, d.left, d.bottom);
+	LineTo(hdc, d.left, d.top);
+
+	//SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+	//Rectangle(hdc, d.left, d.top, d.right, d.bottom);
+
+
+	//描画データが空もしくは未接続ならば返す
+	if ((myData.empty() && recvData.empty()) || (sock == INVALID_SOCKET && sv_sock == INVALID_SOCKET)) {
+
+		EndPaint(hWnd, &ps);
+		return 0L;
+	}
+	//自分を描いた分を描画
+	SelectObject(hdc, hPenBlack);
+	for (auto itr = myData.begin(); itr != myData.end(); ++itr) {
+		if ((*itr).flag == 0) {
+			MoveToEx(hdc, (*itr).pos.x, (*itr).pos.y, NULL);
+		}
+		else {
+			LineTo(hdc, (*itr).pos.x, (*itr).pos.y);
+		}
+	}
+
+	//相手が描いた分を描画
+	SelectObject(hdc, hPenRed);
+	for (auto itr = recvData.begin(); itr != recvData.end(); ++itr) {
+		if ((*itr).flag == 0) {
+			MoveToEx(hdc, (*itr).pos.x, (*itr).pos.y, NULL);
+		}
+		else {
+			LineTo(hdc, (*itr).pos.x, (*itr).pos.y);
+		}
+	}
+
+	EndPaint(hWnd, &ps);
+
+	return 0L;
+}
+
+//キャンバス内にマウスが入っているかどうかのチェック
+BOOL checkMousePos(int x, int y)
+{
+	if (x >= d.left && x <= d.right
+		&& y >= d.top && y <= d.bottom) {
+		return TRUE;
+	}
+	return FALSE;
+}
+
+void CambusInit(HWND hWnd, const RECT * rect, BOOL bErase)
+{
+	myData.clear();
+	recvData.clear();
+
+	InvalidateRect(hWnd, rect, bErase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,62 +601,6 @@ BOOL SockConnect(HWND hWnd, LPCSTR host)
 			MessageBox(hWnd, "connect() failed", "Error", MB_OK | MB_ICONEXCLAMATION);
 			return TRUE;
 		}
-	}
-	return FALSE;
-}
-
-
-//再描画関数
-LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
-{
-	HDC hdc;
-	PAINTSTRUCT ps;
-
-	hdc = BeginPaint(hWnd, &ps);
-
-	//描画領域初期化
-	MoveToEx(hdc, d.left, d.top, NULL);
-	LineTo(hdc, d.right, d.top);
-	LineTo(hdc, d.right, d.bottom);
-	LineTo(hdc, d.left, d.bottom);
-	LineTo(hdc, d.left, d.top);
-
-	//SelectObject(hdc, GetStockObject(WHITE_BRUSH));
-	//Rectangle(hdc, d.left, d.top, d.right, d.bottom);
-
-	//自分を描いた分を描画
-	SelectObject(hdc, hPenBlack);
-	for (auto itr = myData.begin(); itr != myData.end(); ++itr) {
-		if ((*itr).flag == 0) {
-			MoveToEx(hdc, (*itr).pos.x, (*itr).pos.y, NULL);
-		}
-		else {
-			LineTo(hdc, (*itr).pos.x, (*itr).pos.y);
-		}
-	}
-
-	//相手が描いた分を描画
-	SelectObject(hdc, hPenRed);
-	for (auto itr = recvData.begin(); itr != recvData.end(); ++itr) {
-		if ((*itr).flag == 0) {
-			MoveToEx(hdc, (*itr).pos.x, (*itr).pos.y, NULL);
-		}
-		else {
-			LineTo(hdc, (*itr).pos.x, (*itr).pos.y);
-		}
-	}
-
-	EndPaint(hWnd, &ps);
-
-	return 0L;
-}
-
-//キャンバス内にマウスが入っているかどうかのチェック
-BOOL checkMousePos(int x, int y)
-{
-	if (x >= d.left && x <= d.right
-		&& y >= d.top && y <= d.bottom) {
-		return TRUE;
 	}
 	return FALSE;
 }
