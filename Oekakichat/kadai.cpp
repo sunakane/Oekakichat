@@ -60,6 +60,11 @@ SOCKET sock = INVALID_SOCKET;            // ソケット
 SOCKET sv_sock = INVALID_SOCKET;            // サーバ用ソケット
 HOSTENT *phe;                       // HOSTENT構造体
 
+HDC hDC, hmemDC;
+HBITMAP hBit;
+
+PAINTSTRUCT ps;
+
 HPEN hPenBlack;
 HPEN hPenRed;
 
@@ -182,6 +187,14 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 
 		SetFocus(hWndHost);     //フォーカス指定
 		SockInit(hWnd);         // ソケット初期化
+
+		hDC = GetDC(hWnd);
+		hmemDC = CreateCompatibleDC(hDC);
+		hBit = CreateCompatibleBitmap(hDC, 360, 250);
+		SelectObject(hmemDC, hBit);
+		SelectObject(hmemDC, GetStockObject(WHITE_BRUSH));
+		PatBlt(hmemDC, d.left, d.top, d.right - d.left, d.bottom - d.top, PATCOPY);
+		ReleaseDC(hWnd, hDC);
 
 		//ペン生成
 		hPenBlack = (HPEN)CreatePen(PS_SOLID, 3, RGB(0, 0, 0));
@@ -436,9 +449,10 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 		return 0L;
 
 	case WM_PAINT:		//再描画
+		hDC = BeginPaint(hWnd, &ps);
+		BitBlt(hDC, d.left, d.top, d.right - d.left, d.bottom - d.top, hmemDC, 10, 100, SRCCOPY);
+		EndPaint(hWnd, &ps);
 		return OnPaint(hWnd, uMsg, wP, lP);
-
-		return 0L;
 
 	case WM_DESTROY:    // ウィンドウが破棄された
 		closesocket(sock);
@@ -478,9 +492,10 @@ BOOL SockInit(HWND hWnd)
 LRESULT CALLBACK OnPaint(HWND hWnd, UINT uMsg, WPARAM wP, LPARAM lP)
 {
 	HDC hdc;
-	PAINTSTRUCT ps;
+	
 
 	hdc = BeginPaint(hWnd, &ps);
+
 
 	//描画領域初期化
 	MoveToEx(hdc, d.left, d.top, NULL);
